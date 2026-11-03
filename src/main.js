@@ -1,7 +1,7 @@
 // =====================================================================
 // CHEF D'ORCHESTRE : boucle de jeu à pas de temps fixe
 // =====================================================================
-import { createInitialState } from './state.js';
+import { createInitialState, applyShot } from './state.js';
 import { step } from './physics.js';
 import { drawState } from './render.js';
 import { initInput, consumeCommands } from './input.js';
@@ -26,6 +26,7 @@ function frame(now) {
   // 1. Entrées
   for (const cmd of consumeCommands()) {
     if (cmd.type === 'reset') state = createInitialState();
+    if (cmd.type === 'shoot') state = applyShot(state, cmd);
   }
 
   // 2. Physique : autant de pas fixes que le temps réel écoulé le demande
