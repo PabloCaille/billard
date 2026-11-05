@@ -4,11 +4,40 @@
   <meta charset="UTF-8">
   <title>Billard</title>
   <style>
-    body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    body {
+      margin: 0; background: #222; color: #ddd; font-family: system-ui, sans-serif;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      min-height: 100vh; gap: 12px;
+    }
+    #panel { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; font-size: 14px; }
+    #panel label { display: flex; align-items: center; gap: 8px; }
+    #panel input[type=range] { width: 220px; }
+    .value { display: inline-block; min-width: 3.5em; font-variant-numeric: tabular-nums; }
+    #help { font-size: 12px; color: #999; }
+    button { padding: 4px 16px; font-size: 14px; }
   </style>
 </head>
 <body>
   <canvas id="table" width="1000" height="500"></canvas>
+
+  <!-- Panneau de test (outil de développement, pas le système de visée du jeu) -->
+  <div id="panel">
+    <label>Vitesse
+      <input id="speed" type="range" min="0" max="12" step="0.1" value="2">
+      <span class="value"><span id="speed-value"></span> m/s</span>
+    </label>
+    <label>Angle
+      <input id="angle" type="range" min="0" max="360" step="1" value="0">
+      <span class="value"><span id="angle-value"></span>°</span>
+    </label>
+    <button id="shoot">Tirer</button>
+    <span>Graine : <span id="seed-value"></span></span>
+  </div>
+  <div id="help">
+    Espace : tirer (scène rechargée) · R : tir aléatoire · N : nouvelle disposition ·
+    0 : scène à l'arrêt · 1 à 5 : scénarios de test
+  </div>
+
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

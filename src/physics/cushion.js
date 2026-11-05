@@ -70,8 +70,9 @@ export function findCushionContact(px, py, v, R, c, tMax) {
 //   uₜ = u - (u·N)·N                        (glissement dans le plan tangent)
 //   Jₜ = -min(μ_c·Jn, 2/7·m·|uₜ|)·ûₜ         (2/7 : annule tout le glissement)
 //   Δv = J/m,  Δω = (r × J)/I,  I = 2/5·m·R²
-// Hypothèses : pendant le choc, on ignore le frottement du tapis, et la
-// composante verticale de Δv est absorbée par le tapis (vz remis à 0).
+// Hypothèses : pendant le choc, on ignore le frottement du tapis. La
+// composante verticale de Δv est renvoyée telle quelle : c'est la contrainte
+// du tapis (events.js) qui la remet à 0, au même endroit pour tous les chocs.
 // Si un jour la bande était plus basse que le centre (sinθ < 0), Δv_z serait
 // positif : c'est l'amorce du saut, traité à l'étape 6.
 export function cushionImpulse(b, v, w, n, c) {
@@ -100,7 +101,7 @@ export function cushionImpulse(b, v, w, n, c) {
   const rJ = cross(r, J);
 
   return {
-    vel: { x: v.x + J.x / m, y: v.y + J.y / m, z: 0 },
+    vel: { x: v.x + J.x / m, y: v.y + J.y / m, z: v.z + J.z / m },
     omega: { x: w.x + rJ.x / I, y: w.y + rJ.y / I, z: w.z + rJ.z / I },
   };
 }

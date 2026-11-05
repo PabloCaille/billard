@@ -55,8 +55,9 @@ export function createTable(spec) {
   };
 }
 
-// Caractéristiques des billes (masses à vérifier, elles n'interviennent
-// que dans la traînée de l'air : partout ailleurs, m se simplifie)
+// Caractéristiques des billes (masses à vérifier). Elles comptent dans la
+// traînée de l'air et, depuis l'étape 3, dans les chocs entre billes :
+// la blanche, plus légère, recule un peu sur un plein sans effet.
 const BALL_SPECS = {
   cue:    { radius: 0.0476 / 2, mass: 0.105 }, // blanche : 1 7/8"
   red:    { radius: 0.0508 / 2, mass: 0.118 }, // couleurs : 2"
@@ -81,13 +82,18 @@ export function createBall(id, kind, x, y) {
   };
 }
 
-// État de départ : la blanche au quart de la table, immobile.
-// La table est une donnée statique : elle est partagée entre états
-// successifs et personne ne la modifie.
+// Un état = la table (donnée statique, partagée entre états successifs,
+// que personne ne modifie) + la liste des billes.
+export function createState(table, balls) {
+  return { time: 0, table, balls };
+}
+
+// État minimal : la blanche seule au quart de la table, immobile.
+// Gardé pour la simulation de référence (tests/reference.js).
 export function createInitialState(spec = TABLE_SPECS.english7ft) {
   const table = createTable(spec);
   const cue = createBall('blanche', 'cue', table.length / 4, table.width / 2);
-  return { time: 0, table, balls: [cue] };
+  return createState(table, [cue]);
 }
 
 // Tir de test (en attendant la visée de l'étape 4) : frappe au centre,

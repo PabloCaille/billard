@@ -11,5 +11,6 @@ export const PHYS = {
   airDensity: 1.2,   // kg/m³
   dragCoef: 0.47,    // Cx d'une sphère
   slipEpsilon: 1e-4, // m/s : en dessous, on considère que la bille roule
-  maxContactsPerStep: 8, // garde-fou : nombre max de chocs traités dans un même pas
+  ballRestitution: 0.95, // e_b : choc bille/bille (0,93 à 0,98 selon Alciatore)
+  maxEventsPerStep: 64,  // garde-fou : nombre max de chocs traités dans un même pas
 };

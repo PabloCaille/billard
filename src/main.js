@@ -1,7 +1,8 @@
 // =====================================================================
 // CHEF D'ORCHESTRE : boucle de jeu à pas de temps fixe
 // =====================================================================
-import { createInitialState, applyShot } from './state.js';
+import { TABLE_SPECS, createTable, createState, applyShot } from './state.js';
+import { createRandomScene, createScenario, SCENARIO_NAMES } from './scenarios.js';
 import { step } from './physics/index.js';
 import { drawState } from './render.js';
 import { initInput, consumeCommands } from './input.js';
@@ -12,7 +13,8 @@ const MAX_FRAME = 0.25;   // si l'onglet a été mis en pause, on n'essaie pas d
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 
-let state = createInitialState();
+const table = createTable(TABLE_SPECS.english7ft); // statique, partagée par tous les états
+let state = createState(table, []);
 let accumulator = 0;
 let lastTime = null;
 
@@ -25,7 +27,11 @@ function frame(now) {
 
   // 1. Entrées
   for (const cmd of consumeCommands()) {
-    if (cmd.type === 'reset') state = createInitialState();
+    if (cmd.type === 'loadScene') state = createState(table, createRandomScene(table, cmd.seed));
+    if (cmd.type === 'loadScenario') {
+      state = createState(table, createScenario(table, cmd.id));
+      console.log(`Scénario ${cmd.id} : ${SCENARIO_NAMES[cmd.id]}`);
+    }
     if (cmd.type === 'shoot') state = applyShot(state, cmd);
   }
 
@@ -33,6 +39,7 @@ function frame(now) {
   accumulator += elapsed;
   while (accumulator >= DT) {
     state = step(state, DT);
+    if (state.diag.overflow) console.warn(`Plafond de chocs atteint à t = ${state.time.toFixed(3)} s`);
     accumulator -= DT;
   }
 
