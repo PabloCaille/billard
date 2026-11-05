@@ -19,9 +19,13 @@ export const TABLE_SPECS = {
     length: 1.78,
     width: 0.89,
     cushion: {
-      restitution: 0.8,  // e : rapport des vitesses normales après/avant (à calibrer)
-      friction: 0.2,     // μ_c : frottement bille/bande (à calibrer)
-      noseHeight: 0.035, // hauteur du nez de bande au-dessus du tapis (m), pas encore utilisée
+      // e et μ_c : valeurs de Mathavan et al. (2010), à calibrer
+      restitution: 0.98, // e : rapport des vitesses normales après/avant
+      friction: 0.14,    // μ_c : frottement bille/bande
+      // Nez de bande à 63,5 % du diamètre des couleurs (spec WPA, 50,8 mm) :
+      // environ 1,27·R au-dessus du tapis. Hauteur absolue : la blanche,
+      // plus petite, prend la bande plus haut par rapport à son centre.
+      noseHeight: 0.0323, // m
     },
   },
 };

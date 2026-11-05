@@ -112,7 +112,7 @@ function moveBall(b, dt, cushions) {
   for (let i = 0; i < PHYS.maxContactsPerStep; i++) {
     let best = null;
     for (const c of cushions) {
-      const hit = findContact(px, py, vel, b.radius, c, remaining);
+      const hit = findContact(px, py, vel, contactRadius(b.radius, c), c, remaining);
       if (hit && (!best || hit.t < best.t)) best = hit;
     }
     if (!best) break;
@@ -129,6 +129,19 @@ function moveBall(b, dt, cushions) {
     vel,
     omega,
   };
+}
+
+// Géométrie du contact avec le nez de bande, situé à la hauteur h du tapis.
+// d = h − R : décalage du point de contact au-dessus du centre de la bille.
+// sinθ = d/R. La bille touche le nez quand la distance HORIZONTALE entre son
+// centre et la ligne du nez vaut R·cosθ (un peu moins que R : la bille passe
+// légèrement sous le nez). La blanche, plus petite, a un θ plus grand.
+function contactAngle(R, c) {
+  const s = Math.max(-0.9, Math.min(0.9, (c.noseHeight - R) / R));
+  return { sin: s, cos: Math.sqrt(1 - s * s) };
+}
+function contactRadius(R, c) {
+  return R * contactAngle(R, c).cos;
 }
 
 // Premier instant t ∈ [0, tMax] où la bille (centre p, vitesse v, rayon R)
@@ -176,32 +189,53 @@ function findContact(px, py, v, R, c, tMax) {
   return best;
 }
 
-// Choc bille/bande : restitution normale + frottement de Coulomb.
-// Contact supposé à hauteur du centre : r = −R·n (horizontal).
-// Le choc ne touche donc qu'à vx, vy et ω_z. ωx et ωy sont conservés :
-// la bille repart en GLISSEMENT et applyFriction gère la suite.
-//   Jn = −(1+e)·m·vn
-//   uₜ = (v + ω × r)·t
-//   Jₜ = −signe(uₜ)·min(μ_c·Jn, 2/7·m·|uₜ|)   (2/7 = annule tout le glissement)
+// Choc bille/bande à la vraie hauteur du nez (choc instantané, type Han 2005).
+// Point de contact vu du centre :  r = R·(−cosθ·n + sinθ·z)
+// Normale de contact (vers la bille) : N = −r/R = cosθ·n − sinθ·z
+//   (la bande repousse la bille ET l'appuie sur le tapis)
+// Vitesse du point de contact : u = v + ω × r
+//   Jn = −(1+e)·m·(u·N)                    (N passe par le centre : masse m)
+//   uₜ = u − (u·N)·N                        (glissement dans le plan tangent)
+//   Jₜ = −min(μ_c·Jn, 2/7·m·|uₜ|)·ûₜ         (2/7 : annule tout le glissement)
 //   Δv = J/m,  Δω = (r × J)/I,  I = 2/5·m·R²
+// Hypothèses : pendant le choc, on ignore le frottement du tapis, et la
+// composante verticale de Δv est absorbée par le tapis (vz remis à 0).
+// Si un jour la bande était plus basse que le centre (sinθ < 0), Δv_z serait
+// positif : c'est l'amorce du saut, traité à l'étape 6.
 function cushionImpulse(b, v, w, n, c) {
   const m = b.mass, R = b.radius, I = 0.4 * m * R * R;
-  const tx = -n.y, ty = n.x;                      // tangente
+  const { sin, cos } = contactAngle(R, c);
 
-  const vn = v.x * n.x + v.y * n.y;
-  const Jn = -(1 + c.restitution) * m * vn;
+  const r = { x: -R * cos * n.x, y: -R * cos * n.y, z: R * sin };
+  const N = { x: cos * n.x, y: cos * n.y, z: -sin };
 
-  // ω × r avec r = (−R·nx, −R·ny, 0), composantes horizontales
-  const cvx = v.x + R * w.z * n.y;
-  const cvy = v.y - R * w.z * n.x;
-  const ut = cvx * tx + cvy * ty;
-  const Jt = -Math.sign(ut) * Math.min(c.friction * Jn, (2 / 7) * m * Math.abs(ut));
+  const wr = cross(w, r);
+  const u = { x: v.x + wr.x, y: v.y + wr.y, z: v.z + wr.z };
+  const uN = dot(u, N);
+  if (uN >= 0) return { vel: v, omega: w }; // la bille s'éloigne déjà
 
-  const Jx = Jn * n.x + Jt * tx;
-  const Jy = Jn * n.y + Jt * ty;
+  const Jn = -(1 + c.restitution) * m * uN;
+
+  const ut = { x: u.x - uN * N.x, y: u.y - uN * N.y, z: u.z - uN * N.z };
+  const utNorm = Math.hypot(ut.x, ut.y, ut.z);
+  const Jt = utNorm > 1e-12 ? Math.min(c.friction * Jn, (2 / 7) * m * utNorm) / utNorm : 0;
+
+  const J = {
+    x: Jn * N.x - Jt * ut.x,
+    y: Jn * N.y - Jt * ut.y,
+    z: Jn * N.z - Jt * ut.z,
+  };
+  const rJ = cross(r, J);
 
   return {
-    vel: { x: v.x + Jx / m, y: v.y + Jy / m, z: 0 },
-    omega: { x: w.x, y: w.y, z: w.z + (R * (n.y * Jx - n.x * Jy)) / I },
+    vel: { x: v.x + J.x / m, y: v.y + J.y / m, z: 0 },
+    omega: { x: w.x + rJ.x / I, y: w.y + rJ.y / I, z: w.z + rJ.z / I },
   };
 }
+
+const dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+const cross = (a, b) => ({
+  x: a.y * b.z - a.z * b.y,
+  y: a.z * b.x - a.x * b.z,
+  z: a.x * b.y - a.y * b.x,
+});
