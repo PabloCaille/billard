@@ -2,7 +2,7 @@
 // CHEF D'ORCHESTRE : boucle de jeu à pas de temps fixe
 // =====================================================================
 import { createInitialState, applyShot } from './state.js';
-import { step } from './physics.js';
+import { step } from './physics/index.js';
 import { drawState } from './render.js';
 import { initInput, consumeCommands } from './input.js';
 
