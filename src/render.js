@@ -1,36 +1,25 @@
 // =====================================================================
 // RENDU
-// Lecture seule de l'état. Seul endroit qui connaît les pixels et les
-// couleurs. Table, bandes et billes passent par la MÊME vue (échelle +
-// décalage), donc ce qu'on voit coïncide avec ce que calcule la physique.
+// Lecture seule de l'état ET de la visée. Seul endroit qui connaît les
+// couleurs. Table, bandes, billes et aides passent par la MÊME vue
+// (view.js), donc ce qu'on voit coïncide avec ce que calcule la physique
+// et avec ce que vise la souris.
 // =====================================================================
+import { toScreen } from './view.js';
 
 const COLORS = {
   wood: '#5a3a1a',
   cushion: '#145a2b',
   felt: '#1e7a3c',
   cue: '#f5f5f0', red: '#c0392b', yellow: '#f1c40f', black: '#111',
+  stick: '#c8a46a',
+  guide: 'rgba(255, 255, 255, 0.75)',
 };
 
-const MARGIN_PX = 45;          // bois + bande autour du tapis (px)
 const CUSHION_DRAW_WIDTH = 0.04; // épaisseur dessinée des bandes (m), purement visuelle
-
-function computeView(W, H, table) {
-  const scale = Math.min((W - 2 * MARGIN_PX) / table.length, (H - 2 * MARGIN_PX) / table.width);
-  return {
-    scale,
-    ox: (W - table.length * scale) / 2,
-    oy: (H - table.width * scale) / 2,
-    tableWidth: table.width,
-  };
-}
-
-function toScreen(view, p) {
-  return {
-    x: view.ox + p.x * view.scale,
-    y: view.oy + (view.tableWidth - p.y) * view.scale, // retournement de l'axe y
-  };
-}
+const STICK_LENGTH = 1.2;        // m, purement visuel
+const STICK_MAX_DRAW = 0.18;     // m : recul affiché de la queue à pleine puissance
+const OBJECT_LINE = 0.25;        // m : longueur de la direction affichée de la couleur
 
 function drawTable(ctx, view, table) {
   const { width: W, height: H } = ctx.canvas;
@@ -43,7 +32,7 @@ function drawTable(ctx, view, table) {
   ctx.fillRect(tl.x, tl.y, table.length * view.scale, table.width * view.scale);
 
   // Bandes : dessinées à partir des MÊMES segments que la physique,
-  // décalées vers l'extérieur (−n). Les mâchoires futures s'afficheront seules.
+  // décalées vers l'extérieur (-n). Les mâchoires futures s'afficheront seules.
   ctx.fillStyle = COLORS.cushion;
   for (const c of table.cushions) {
     const off = { x: -c.n.x * CUSHION_DRAW_WIDTH, y: -c.n.y * CUSHION_DRAW_WIDTH };
@@ -68,12 +57,87 @@ function drawBall(ctx, x, y, radius, color) {
   ctx.fill();
 }
 
-export function drawState(ctx, state) {
-  const { width: W, height: H } = ctx.canvas;
-  const view = computeView(W, H, state.table);
+function line(ctx, view, a, b, { color, width = 1, dash = [] }) {
+  const p = toScreen(view, a), q = toScreen(view, b);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(q.x, q.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Prévision complète (débogage) : trajectoires simulées, sous les billes
+function drawPrediction(ctx, view, paths) {
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.5;
+  for (const { kind, points } of paths) {
+    ctx.strokeStyle = COLORS[kind];
+    ctx.beginPath();
+    points.forEach((pt, i) => {
+      const s = toScreen(view, pt);
+      if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Visée : lien curseur/blanche, ligne jusqu'au premier contact, bille
+// fantôme, direction de la couleur, queue reculée selon la PUISSANCE.
+function drawAim(ctx, view, aim) {
+  const { cue, cursor, shot, guide } = aim;
+  const c = { x: cue.pos.x, y: cue.pos.y };
+
+  // Lien fin entre le curseur et la blanche (c'est lui qui règle tout)
+  if (cursor) line(ctx, view, c, cursor, { color: 'rgba(255,255,255,0.25)', dash: [2, 4] });
+  if (!shot) return;
+
+  const d = { x: Math.cos(shot.angle), y: Math.sin(shot.angle) };
+
+  if (guide) {
+    line(ctx, view, c, guide.ghost, { color: COLORS.guide, dash: [6, 5] });
+    const g = toScreen(view, guide.ghost);
+    ctx.save();
+    ctx.strokeStyle = COLORS.guide;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, cue.radius * view.scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    if (guide.hit.type === 'ball') {
+      const { from, dir } = guide.hit;
+      line(ctx, view, from, { x: from.x + dir.x * OBJECT_LINE, y: from.y + dir.y * OBJECT_LINE },
+        { color: COLORS.guide, width: 2 });
+    }
+  }
+
+  // Queue : derrière la blanche, reculée proportionnellement à la puissance
+  const back = cue.radius + 0.01 + STICK_MAX_DRAW * shot.power;
+  const tipPos = { x: c.x - d.x * back, y: c.y - d.y * back };
+  const endPos = { x: tipPos.x - d.x * STICK_LENGTH, y: tipPos.y - d.y * STICK_LENGTH };
+  line(ctx, view, tipPos, endPos, { color: COLORS.stick, width: 6 });
+
+  // Vitesse en clair, au-dessus de la blanche
+  const s = toScreen(view, c);
+  ctx.save();
+  ctx.font = '14px system-ui, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${shot.speed.toFixed(1)} m/s`, s.x, s.y - cue.radius * view.scale - 10);
+  ctx.restore();
+}
+
+export function drawState(ctx, view, state, aim = null) {
   drawTable(ctx, view, state.table);
+  if (aim && aim.prediction) drawPrediction(ctx, view, aim.prediction);
   for (const b of state.balls) {
     const p = toScreen(view, b.pos);
     drawBall(ctx, p.x, p.y, b.radius * view.scale, COLORS[b.kind]);
   }
+  if (aim) drawAim(ctx, view, aim);
 }

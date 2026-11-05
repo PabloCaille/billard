@@ -96,8 +96,16 @@ export function createInitialState(spec = TABLE_SPECS.english7ft) {
   return createState(table, [cue]);
 }
 
-// Tir de test (en attendant la visée de l'étape 4) : frappe au centre,
-// donc vitesse sans rotation. Renvoie un NOUVEL état.
+// Toutes les billes sont-elles à l'arrêt ? (on ne vise qu'à ce moment-là)
+export function isAtRest(state) {
+  return state.balls.every((b) => b.vel.x === 0 && b.vel.y === 0 && b.vel.z === 0);
+}
+
+// Tir : commande { ballId, speed, angle, tip, elevation }.
+// tip = point d'impact de la queue sur la blanche, elevation = inclinaison
+// de la queue : prévus pour les effets et le saut (étape 6), toujours 0
+// pour l'instant, donc ignorés. Frappe au centre : vitesse sans rotation.
+// Renvoie un NOUVEL état.
 export function applyShot(state, { ballId, speed, angle }) {
   return {
     ...state,
