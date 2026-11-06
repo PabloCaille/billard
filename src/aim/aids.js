@@ -27,7 +27,7 @@ export function computeGuide(state, cueId, angle) {
 
   let best = null;
   for (const o of state.balls) {
-    if (o.id === cueId) continue;
+    if (o.id === cueId || o.pocketed) continue;
     const t = findBallBallContact(ray, { ...o, vel: { x: 0, y: 0, z: 0 } }, RAY_LENGTH);
     if (t !== null && (!best || t < best.t)) best = { t, type: 'ball', ball: o };
   }

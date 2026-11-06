@@ -13,6 +13,7 @@ const COLORS = {
   felt: '#1e7a3c',
   cue: '#f5f5f0', red: '#c0392b', yellow: '#f1c40f', black: '#111',
   stick: '#c8a46a',
+  pocket: '#0b0b0b',
   guide: 'rgba(255, 255, 255, 0.75)',
 };
 
@@ -31,8 +32,21 @@ function drawTable(ctx, view, table) {
   ctx.fillStyle = COLORS.felt;
   ctx.fillRect(tl.x, tl.y, table.length * view.scale, table.width * view.scale);
 
-  // Bandes : dessinées à partir des MÊMES segments que la physique,
-  // décalées vers l'extérieur (-n). Les mâchoires futures s'afficheront seules.
+  // Trous des poches (sous les bandes) : disque centré juste derrière la ligne
+  // de capture, de la largeur de l'ouverture
+  ctx.fillStyle = COLORS.pocket;
+  for (const pk of table.pockets) {
+    const c = toScreen(view, {
+      x: pk.ref.x + pk.d.x * (pk.depth + 0.004),
+      y: pk.ref.y + pk.d.y * (pk.depth + 0.004),
+    });
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, (pk.mouth / 2) * view.scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Bandes et mâchoires : dessinées à partir des MÊMES segments que la
+  // physique, décalées vers l'extérieur (-n).
   ctx.fillStyle = COLORS.cushion;
   for (const c of table.cushions) {
     const off = { x: -c.n.x * CUSHION_DRAW_WIDTH, y: -c.n.y * CUSHION_DRAW_WIDTH };
@@ -136,6 +150,7 @@ export function drawState(ctx, view, state, aim = null) {
   drawTable(ctx, view, state.table);
   if (aim && aim.prediction) drawPrediction(ctx, view, aim.prediction);
   for (const b of state.balls) {
+    if (b.pocketed) continue; // tombée : plus dessinée (animation de chute : plus tard)
     const p = toScreen(view, b.pos);
     drawBall(ctx, p.x, p.y, b.radius * view.scale, COLORS[b.kind]);
   }

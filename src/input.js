@@ -19,7 +19,7 @@
 //   R              : valeurs aléatoires dans les curseurs, puis Tirer
 //   N              : nouvelle graine, nouvelle disposition des couleurs
 //   0              : recharge la scène 0, à l'arrêt
-//   1 à 5          : scénarios de test
+//   1 à 8          : scénarios de test (6 à 8 : poches)
 //
 // getAim() fournit au rendu une vue EN LECTURE SEULE de la visée en cours.
 // =====================================================================
@@ -96,7 +96,7 @@ function pointerToWorld(canvas, view, e) {
   });
 }
 
-const cueOf = (state) => state.balls.find((b) => b.id === CUE_ID);
+const cueOf = (state) => state.balls.find((b) => b.id === CUE_ID && !b.pocketed);
 
 function initPointer(canvas, view) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -143,7 +143,7 @@ export function initInput({ canvas, view, getState: gs }) {
     else if (k === 'r') randomShot();
     else if (k === 'n') newSeed();
     else if (k === '0') { slingshot.cancel(); queue.push({ type: 'loadScene', seed }); }
-    else if (k >= '1' && k <= '5') { slingshot.cancel(); queue.push({ type: 'loadScenario', id: Number(k) }); }
+    else if (k >= '1' && k <= '8') { slingshot.cancel(); queue.push({ type: 'loadScenario', id: Number(k) }); }
   });
 
   refreshLabels();

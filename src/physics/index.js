@@ -7,6 +7,7 @@
 //   cloth.js      frottements du tapis (glissement, roulement, air)
 //   cushion.js    contact et choc bille/bande
 //   ballball.js   contact et choc bille/bille
+//   pockets.js    chute dans une poche
 //   events.js     boucle d'événements : déplacement de toutes les billes
 // =====================================================================
 import { applyFriction } from './cloth.js';
@@ -18,9 +19,15 @@ export { PHYS } from './constants.js';
 // La physique n'écrit rien dans la console : c'est main.js qui décide.
 export function step(state, dt) {
   const { balls, events, overflow } = moveBalls(
-    state.balls.map((b) => applyFriction(b, dt)),
+    state.balls.map((b) => (b.pocketed ? b : applyFriction(b, dt))),
     dt,
-    state.table.cushions
+    state.table.cushions,
+    state.table.pockets
   );
-  return { ...state, time: state.time + dt, balls, diag: { events, overflow } };
+  // Bille tombée pendant ce pas : on note l'instant (les règles lisent l'ordre)
+  const time = state.time + dt;
+  const stamped = balls.map((b, i) =>
+    b.pocketed && !state.balls[i].pocketed ? { ...b, pocketedAt: time } : b
+  );
+  return { ...state, time, balls: stamped, diag: { events, overflow } };
 }

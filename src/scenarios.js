@@ -11,7 +11,7 @@
 //   tir avant l'étape 6.
 // =====================================================================
 import { createBall } from './state.js';
-import { contactRadius } from './physics/cushion.js';
+import { contactRadius, segmentDistance } from './physics/cushion.js';
 
 // "Collée" = au contact + 1 µm : jamais de chevauchement à cause des arrondis
 const TOUCH_GAP = 1e-6; // m
@@ -32,14 +32,26 @@ function mulberry32(seed) {
 // petite, a son centre plus bas)
 const dist3 = (a, b) => Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y, a.pos.z - b.pos.z);
 
-// Distance minimale centre/bande pour que la bille ne pénètre pas la bande.
-// La table est rectangulaire (4 bandes) : on lit la marge sur la 1re bande.
+// Distance minimale centre/bande pour que la bille ne pénètre pas une bande
+// DROITE : tous les segments partagent le même nez, on lit la marge sur le 1er.
 const cushionMargin = (table, b) => contactRadius(b.radius, table.cushions[0]);
+
+// Jeu entre la bille et la bande ou mâchoire la plus proche (< 0 : pénétration)
+export function cushionClearance(table, b) {
+  let best = Infinity;
+  for (const c of table.cushions) {
+    best = Math.min(best, segmentDistance(b.pos.x, b.pos.y, c) - contactRadius(b.radius, c));
+  }
+  return best;
+}
 
 function fits(table, b, placed) {
   const m = cushionMargin(table, b) + TOUCH_GAP * 0.5;
   if (b.pos.x < m || b.pos.x > table.length - m) return false;
   if (b.pos.y < m || b.pos.y > table.width - m) return false;
+  // Mâchoires de poche comprises (le rectangle seul laisserait passer une
+  // bille posée dans l'ouverture d'une poche)
+  if (cushionClearance(table, b) < TOUCH_GAP * 0.5) return false;
   for (const o of placed) {
     const minD = b.radius + o.radius + TOUCH_GAP * 0.5;
     if (dist3(b, o) < minD) return false;
@@ -117,7 +129,7 @@ export function createRandomScene(table, seed) {
 }
 
 // ---------------------------------------------------------------------
-// SCÉNARIOS 1 À 5 (à 1 m/s, lancés tels quels)
+// SCÉNARIOS 1 À 8 (lancés tels quels : 1 à 5 à 1 m/s ; 6 à 8 vers une poche)
 // Roulement pur dans la direction +x : ω = (0, v/R, 0)  (v = R·ω, r = -R·z)
 // ---------------------------------------------------------------------
 function moving(id, kind, x, y, v, rolling) {
@@ -129,12 +141,24 @@ function moving(id, kind, x, y, v, rolling) {
   };
 }
 
+// Bille en roulement pur (ou non) lancée vers un point cible
+function movingToward(id, kind, x, y, target, speed, rolling) {
+  const b = createBall(id, kind, x, y);
+  const a = Math.atan2(target.y - y, target.x - x);
+  const vx = speed * Math.cos(a), vy = speed * Math.sin(a);
+  // Roulement pur : ωx = -vy/R, ωy = vx/R
+  return { ...b, vel: { x: vx, y: vy, z: 0 }, omega: rolling ? { x: -vy / b.radius, y: vx / b.radius, z: 0 } : { x: 0, y: 0, z: 0 } };
+}
+
 export const SCENARIO_NAMES = {
   1: 'Plein, blanche en glissement pur',
   2: 'Plein, blanche en roulement pur',
   3: 'Coupe demi-bille, glissement pur',
   4: 'Coupe demi-bille, roulement pur',
   5: 'Blanche vers 3 couleurs alignées collées',
+  6: 'Blanche droit dans le coin bas gauche (doit tomber)',
+  7: 'Blanche sur le genou de la mâchoire du milieu bas (rebond)',
+  8: 'Blanche en biais vers la poche du milieu bas',
 };
 
 export function createScenario(table, id) {
@@ -163,6 +187,21 @@ export function createScenario(table, id) {
         createBall(['rouge1', 'jaune1', 'rouge2'][i], i === 1 ? 'yellow' : 'red', 1.0 + i * D, W / 2)
       );
       return [moving('blanche', 'cue', 1.0 - h - 0.10, W / 2, 1, true), ...row];
+    }
+    case 6: {
+      // Sur l'axe du coin bas gauche, visée sur le point de référence de la poche
+      const pk = table.pockets[0];
+      return [movingToward('blanche', 'cue', 0.40, 0.40, pk.ref, 1, true)];
+    }
+    case 7: {
+      // Visée sur le point le plus étroit de la mâchoire : le centre vise le genou
+      const pk = table.pockets[1];
+      return [movingToward('blanche', 'cue', pk.ref.x + 0.30, 0.30, pk.narrow[0], 1.5, true)];
+    }
+    case 8: {
+      // Tir en biais vers le milieu de l'ouverture
+      const pk = table.pockets[1];
+      return [movingToward('blanche', 'cue', pk.ref.x - 0.35, 0.30, pk.center, 1.2, true)];
     }
     default:
       throw new Error(`Scénario inconnu : ${id}`);

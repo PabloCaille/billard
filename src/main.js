@@ -4,6 +4,7 @@
 import { TABLE_SPECS, createTable, createState, applyShot } from './state.js';
 import { createRandomScene, createScenario, SCENARIO_NAMES } from './scenarios.js';
 import { step } from './physics/index.js';
+import { applyRules } from './rules.js';
 import { createView } from './view.js';
 import { drawState } from './render.js';
 import { initInput, consumeCommands, getAim } from './input.js';
@@ -37,10 +38,10 @@ function frame(now) {
     if (cmd.type === 'shoot') state = applyShot(state, cmd);
   }
 
-  // 2. Physique : autant de pas fixes que le temps réel écoulé le demande
+  // 2. Physique puis règles : autant de pas fixes que le temps réel écoulé le demande
   accumulator += elapsed;
   while (accumulator >= DT) {
-    state = step(state, DT);
+    state = applyRules(step(state, DT));
     if (state.diag.overflow) console.warn(`Plafond de chocs atteint à t = ${state.time.toFixed(3)} s`);
     accumulator -= DT;
   }

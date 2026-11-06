@@ -16,6 +16,14 @@ export function contactRadius(R, c) {
   return R * contactAngle(R, c).cos;
 }
 
+// Distance du point (px, py) au SEGMENT c (pas à sa droite infinie).
+// Sert aux placements et aux tests : combien reste-t-il entre une bille et une bande.
+export function segmentDistance(px, py, c) {
+  const ex = c.b.x - c.a.x, ey = c.b.y - c.a.y;
+  const s = Math.max(0, Math.min(1, ((px - c.a.x) * ex + (py - c.a.y) * ey) / (ex * ex + ey * ey)));
+  return Math.hypot(px - (c.a.x + s * ex), py - (c.a.y + s * ey));
+}
+
 // Premier instant t ∈ [0, tMax] où la bille (centre p, vitesse v, rayon R)
 // touche le segment c. Deux cas :
 //   - contact sur la partie droite du segment (distance au plan = R)

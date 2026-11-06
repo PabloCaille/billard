@@ -7,6 +7,8 @@
 // Le rendu se charge de retourner l'axe y pour le canvas.
 // =====================================================================
 
+import { buildTableGeometry } from './tableGeometry.js';
+
 // ---------------------------------------------------------------------
 // TABLES
 // Une table = une spec (dimensions + propriétés des bandes). D'autres
@@ -27,31 +29,33 @@ export const TABLE_SPECS = {
       // plus petite, prend la bande plus haut par rapport à son centre.
       noseHeight: 0.0323, // m
     },
+    // Poches (étape 5a). Ouverture = 1,6 x diamètre de bille (pool britannique
+    // WEPF, identique aux 6 poches), mesurée à l'endroit le plus étroit.
+    // knuckleRadius, flareDeg et captureDepth sont des RÉGLAGES (pas de valeur
+    // officielle trouvée) : à ajuster en jouant.
+    pocket: {
+      mouthRatio: 1.6,
+      refBallDiameter: 0.0508, // couleurs
+      knuckleRadius: 0.015,    // m : arrondi du genou de la mâchoire
+      flareDeg: 3,             // ° : évasement des parois par rapport à l'axe
+      captureDepth: 0.010,     // m : la bille tombe quand son centre dépasse de 1 cm la ligne des nez
+    },
   },
 };
 
 // Construit la table utilisée par la physique et le rendu.
-// Les bandes sont une LISTE DE SEGMENTS : pour l'instant 4, plus tard
-// les mâchoires de poche s'ajouteront simplement à cette liste.
+// Les bandes sont une LISTE DE SEGMENTS : bandes droites + mâchoires de
+// poche (arcs approchés par des cordes, puis parois), voir tableGeometry.js.
 // Chaque segment porte sa normale unitaire n, dirigée vers le tapis.
+// pockets = description de chaque poche (axe, ouverture, ligne de capture).
 export function createTable(spec) {
-  const { length: L, width: W, cushion } = spec;
-  const seg = (ax, ay, bx, by, nx, ny) => ({
-    a: { x: ax, y: ay },
-    b: { x: bx, y: by },
-    n: { x: nx, y: ny },
-    ...cushion,
-  });
+  const { cushions, pockets } = buildTableGeometry(spec);
   return {
     name: spec.name,
-    length: L,
-    width: W,
-    cushions: [
-      seg(0, 0, L, 0, 0, 1),   // bande du bas
-      seg(L, 0, L, W, -1, 0),  // bande de droite
-      seg(L, W, 0, W, 0, -1),  // bande du haut
-      seg(0, W, 0, 0, 1, 0),   // bande de gauche
-    ],
+    length: spec.length,
+    width: spec.width,
+    cushions,
+    pockets,
   };
 }
 
@@ -79,6 +83,8 @@ export function createBall(id, kind, x, y) {
     pos: vec(x, y, radius), // centre posé sur le tapis : z = R
     vel: vec(),             // m/s
     omega: vec(),           // rad/s
+    pocketed: false,        // true une fois tombée (la physique l'ignore ensuite)
+    pocket: null,           // indice de la poche (table.pockets) où elle est tombée
   };
 }
 
@@ -97,6 +103,7 @@ export function createInitialState(spec = TABLE_SPECS.english7ft) {
 }
 
 // Toutes les billes sont-elles à l'arrêt ? (on ne vise qu'à ce moment-là)
+// Une bille empochée a une vitesse nulle : elle ne compte pas.
 export function isAtRest(state) {
   return state.balls.every((b) => b.vel.x === 0 && b.vel.y === 0 && b.vel.z === 0);
 }
