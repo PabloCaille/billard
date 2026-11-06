@@ -27,13 +27,9 @@ function drawTable(ctx, view, table) {
   ctx.fillStyle = COLORS.wood;
   ctx.fillRect(0, 0, W, H);
 
-  // Tapis : exactement la surface de jeu de la physique
-  const tl = toScreen(view, { x: 0, y: table.width });
-  ctx.fillStyle = COLORS.felt;
-  ctx.fillRect(tl.x, tl.y, table.length * view.scale, table.width * view.scale);
-
-  // Trous des poches (sous les bandes) : disque centré juste derrière la ligne
-  // de capture, de la largeur de l'ouverture
+  // Trous des poches, dessinés AVANT le tapis : le tapis les recouvre, donc on
+  // ne voit le noir qu'au-delà de la ligne des nez, là où la bille tombe
+  // vraiment (son centre doit dépasser la ligne des nez de captureDepth).
   ctx.fillStyle = COLORS.pocket;
   for (const pk of table.pockets) {
     const c = toScreen(view, {
@@ -44,6 +40,11 @@ function drawTable(ctx, view, table) {
     ctx.arc(c.x, c.y, (pk.mouth / 2) * view.scale, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // Tapis : exactement la surface de jeu de la physique
+  const tl = toScreen(view, { x: 0, y: table.width });
+  ctx.fillStyle = COLORS.felt;
+  ctx.fillRect(tl.x, tl.y, table.length * view.scale, table.width * view.scale);
 
   // Bandes et mâchoires : dessinées à partir des MÊMES segments que la
   // physique, décalées vers l'extérieur (-n).

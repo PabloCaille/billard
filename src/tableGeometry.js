@@ -14,7 +14,8 @@
 //
 // "Ouverture" (mouth) = écart MINIMAL entre les deux mâchoires, c'est-à-dire
 // entre les deux points où les arcs rejoignent les parois. C'est la largeur
-// que la bille doit passer. Le point où la bande quitte la ligne droite est
+// que la bille doit passer. Les poches du milieu sont plus larges que les
+// coins de spec.pocket.middleExtra. Le point où la bande quitte la ligne droite est
 // donc un peu plus large que l'ouverture (de l'ordre de rk de chaque côté).
 //
 // Repère : celui de l'état (mètres, origine coin bas gauche, y vers le haut).
@@ -34,10 +35,9 @@ const WALL_MARGIN = 0.04;              // m : la paroi dépasse la ligne de capt
 
 export function buildTableGeometry(spec) {
   const { length: L, width: W, cushion, pocket: P } = spec;
-  const mouth = P.mouthRatio * P.refBallDiameter;
+  const cornerMouth = P.mouthRatio * P.refBallDiameter;
   const rk = P.knuckleRadius;
   const f = (P.flareDeg * Math.PI) / 180;
-  const half = mouth / 2;
 
   // Lignes de nez des 4 bandes : point, normale vers le tapis, direction
   const rails = {
@@ -66,6 +66,8 @@ export function buildTableGeometry(spec) {
   for (const def of defs) {
     const d = def.d;
     const p = rot90(d);
+    const mouth = def.name.startsWith('milieu') ? cornerMouth + P.middleExtra : cornerMouth;
+    const half = mouth / 2;
 
     // --- Position de l'ouverture sur l'axe : on la déduit de la contrainte
     // "l'arc est tangent à la ligne des nez" (centre à rk derrière la ligne).

@@ -33,12 +33,14 @@ function run(state, seconds, onStep) {
 // ---------------------------------------------------------------- 1
 console.log('1. Géométrie');
 {
-  const mouth = spec.pocket.mouthRatio * spec.pocket.refBallDiameter;
+  const corner = spec.pocket.mouthRatio * spec.pocket.refBallDiameter;
   expect(table.pockets.length === 6, 'il faut 6 poches');
   for (const pk of table.pockets) {
+    const mouth = pk.name.startsWith('milieu') ? corner + spec.pocket.middleExtra : corner;
     const [a, b] = pk.narrow;
     const gap = Math.hypot(a.x - b.x, a.y - b.y);
     expect(Math.abs(gap - mouth) < 1e-9, `${pk.name} : ouverture ${gap} au lieu de ${mouth}`);
+    console.log(`  ${pk.name.padEnd(17)} ouverture ${(gap * 1000).toFixed(1)} mm`);
   }
   // Extrémités de segments : chaque raccord (bande/arc, arc/arc, arc/paroi) doit
   // être partagé par deux segments. Il reste 12 bouts libres : le fond des parois.

@@ -29,12 +29,16 @@ export const TABLE_SPECS = {
       // plus petite, prend la bande plus haut par rapport à son centre.
       noseHeight: 0.0323, // m
     },
-    // Poches (étape 5a). Ouverture = 1,6 x diamètre de bille (pool britannique
-    // WEPF, identique aux 6 poches), mesurée à l'endroit le plus étroit.
+    // Poches (étape 5a). Ouverture des coins = 1,6 x diamètre de bille (pool
+    // britannique WEPF), mesurée à l'endroit le plus étroit. Poches du milieu
+    // plus larges de middleExtra : WPA (pool) et snooker donnent toutes deux
+    // +1/2 pouce (12,7 mm) ; la seule source "même largeur partout" pour le
+    // pool britannique est secondaire (Wikipédia). Mettre 0 pour l'annuler.
     // knuckleRadius, flareDeg et captureDepth sont des RÉGLAGES (pas de valeur
     // officielle trouvée) : à ajuster en jouant.
     pocket: {
       mouthRatio: 1.6,
+      middleExtra: 0.0127,     // m
       refBallDiameter: 0.0508, // couleurs
       knuckleRadius: 0.015,    // m : arrondi du genou de la mâchoire
       flareDeg: 3,             // ° : évasement des parois par rapport à l'axe
