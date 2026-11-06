@@ -42,7 +42,7 @@ export const TABLE_SPECS = {
       refBallDiameter: 0.0508, // couleurs
       knuckleRadius: 0.015,    // m : arrondi du genou de la mâchoire
       flareDeg: 3,             // ° : évasement des parois par rapport à l'axe
-      captureDepth: 0.010,     // m : la bille tombe quand son centre dépasse de 1 cm la ligne des nez
+      captureDepth: 0.010,     // m : sur l'axe, la bille tombe quand son centre dépasse de 1 cm la ligne des nez (bord du trou en arc)
     },
   },
 };

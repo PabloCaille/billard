@@ -9,6 +9,7 @@
 import { TABLE_SPECS, createTable, createState, createBall, applyShot, isAtRest } from '../src/state.js';
 import { createRandomScene, cushionClearance } from '../src/scenarios.js';
 import { step } from '../src/physics/index.js';
+import { findPocketCapture } from '../src/physics/pockets.js';
 import { applyRules } from '../src/rules.js';
 
 const DT = 1 / 240;
@@ -52,6 +53,17 @@ console.log('1. Géométrie');
   }
   console.log(`  ${table.cushions.length} segments, ${free} bouts libres (attendu 12)`);
   expect(free === 12, 'chaîne de segments discontinue');
+  // Le bord du trou : dans l'axe, instant de chute exact à captureDepth ; plus loin sur le côté
+  for (const pk of table.pockets) {
+    const at = (lat) => ({
+      pos: { x: pk.ref.x - pk.d.x * 0.1 + pk.p.x * lat, y: pk.ref.y - pk.d.y * 0.1 + pk.p.y * lat, z: 0 },
+      vel: { x: pk.d.x, y: pk.d.y, z: 0 },
+    });
+    const tAxis = findPocketCapture(at(0), pk, 1);
+    expect(Math.abs(tAxis - (0.1 + spec.pocket.captureDepth)) < 1e-9, `${pk.name} : chute dans l'axe à t = ${tAxis}`);
+    const tSide = findPocketCapture(at(0.02), pk, 1);
+    expect(tSide > tAxis, `${pk.name} : une bille décalée doit tomber plus loin qu'une bille dans l'axe`);
+  }
   // Normales unitaires, dirigées vers la table ou la poche (centre de l'ouverture côté libre)
   for (const c of table.cushions) {
     expect(Math.abs(Math.hypot(c.n.x, c.n.y) - 1) < 1e-9, 'normale non unitaire');

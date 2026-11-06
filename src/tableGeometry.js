@@ -115,14 +115,22 @@ export function buildTableGeometry(spec) {
       jaws.push(mkSeg(Wp, add(Wp, scale(w, wallLen)), unit(nw)));
     }
 
+    // Trou de l'ardoise (physique de la chute) : disque de la largeur de
+    // l'ouverture, centré sur l'axe, dont le bord le plus proche du tapis est
+    // à captureDepth au-delà du point de référence (coin ou nez de bande).
+    const fallR = half;
     pockets.push({
       name: def.name,
       ref: def.ref,
       d,
       p,
       mouth,
-      depth: P.captureDepth,        // la bille tombe quand son centre dépasse ref de depth le long de d
-      halfWidth: half + 2 * rk,     // garde-fou latéral de la capture
+      depth: P.captureDepth,        // profondeur de chute sur l'axe, au-delà de ref
+      fall: {
+        x: def.ref.x + d.x * (P.captureDepth + fallR),
+        y: def.ref.y + d.y * (P.captureDepth + fallR),
+        r: fallR,
+      },
       center: M,
       narrow,                       // les deux points les plus rapprochés des mâchoires
     });
